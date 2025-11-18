@@ -5,6 +5,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3001,
+    strictPort: true, // fail instead of auto-switching ports
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 3001,
+    },
   },
   define: {
     'process.env': {}

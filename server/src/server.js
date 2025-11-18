@@ -3,6 +3,10 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import helmet from "helmet";
+import compression from "compression";
+import rateLimit from "express-rate-limit";
+import morgan from "morgan";
 import connectDB from "./config/db.js";
 import { ensureAdminSeed } from "./config/seedAdmin.js";
 import { configureCloudinary } from "./utils/cloudinary.js";
@@ -35,6 +39,24 @@ if (process.env.NODE_ENV !== 'production') {
 console.log(`✓ Cloudinary env check: CLOUD_NAME=${process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'MISSING'}, API_KEY=${process.env.CLOUDINARY_API_KEY ? 'SET' : 'MISSING'}, API_SECRET=${process.env.CLOUDINARY_API_SECRET ? 'SET' : 'MISSING'}`);
 
 const app = express();
+
+// Basic security hardening
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+app.use(compression());
+// Request logging (skip noisy test env)
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+}
+// Rate limiting (generic) – tune as needed
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
 // Support comma-separated origins, default both 3000 (CRA) and 5173 (Vite)
 // We support exact origins and wildcard patterns like "https://*.vercel.app"
 const corsListRaw = process.env.CORS_ORIGIN || "http://localhost:3000,http://localhost:5173";
@@ -101,8 +123,12 @@ const PORT = process.env.PORT || 5000;
     console.log('🔄 Connecting to MongoDB...');
     await connectDB();
     
-    console.log('🔄 Seeding admin user...');
-    await ensureAdminSeed();
+    if (process.env.ENABLE_ADMIN_SEED === 'true') {
+      console.log('🔄 Seeding admin user...');
+      await ensureAdminSeed();
+    } else {
+      console.log('⏭️ Admin seeding disabled (ENABLE_ADMIN_SEED!=true)');
+    }
     
     console.log('🔄 Configuring Cloudinary...');
     configureCloudinary();
@@ -113,7 +139,9 @@ const PORT = process.env.PORT || 5000;
       console.log('✅ SERVER IS RUNNING!');
       console.log(`🌐 Local: http://localhost:${PORT}`);
       console.log(`📊 MongoDB: ${process.env.MONGO_URI.includes('mongodb.net') ? 'Atlas Cloud' : 'Local'}`);
-      console.log(`🔐 Admin Login: admin@shophub.com / admin123`);
+      if (process.env.ENABLE_ADMIN_SEED === 'true') {
+        console.log(`🔐 Admin seed: ${process.env.ADMIN_SEED_EMAIL || 'admin@shophub.com'} / ${process.env.ADMIN_SEED_PASSWORD || 'admin123'}`);
+      }
       console.log('');
     });
 
