@@ -1,0 +1,33 @@
+Search Feature Implementation:
+
+1. Add state: const [searchOrderId, setSearchOrderId] = useState("");
+
+2. Add search bar before "Active Orders" section:
+          {/* Search Bar */}
+          <div className="bg-white p-4 rounded-lg shadow-md">
+            <div className="flex items-center gap-3">
+              <label className="font-semibold text-gray-700">🔍 Search Order:</label>
+              <input
+                type="text"
+                placeholder="Enter Order ID (e.g., 691b53ad127b...)"
+                value={searchOrderId}
+                onChange={(e) => setSearchOrderId(e.target.value)}
+                className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 transition"
+              />
+              {searchOrderId && (
+                <button
+                  onClick={() => setSearchOrderId("")}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {searchOrderId && (
+              <p className="text-sm text-gray-600 mt-2">
+                Searching in all orders (Active, Delivered, Cancelled)
+              </p>
+            )}
+          </div>
+
+3. Update all order filters to include: && o._id.toLowerCase().includes(searchOrderId.toLowerCase())

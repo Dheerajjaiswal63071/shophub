@@ -1,0 +1,161 @@
+const mongoose = require('mongoose');
+
+const productSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, 'Please provide a product name'],
+    trim: true,
+    maxlength: [100, 'Product name cannot exceed 100 characters']
+  },
+  description: {
+    type: String,
+    required: [true, 'Please provide a product description'],
+    maxlength: [2000, 'Product description cannot exceed 2000 characters']
+  },
+  price: {
+    type: Number,
+    required: [true, 'Please provide a product price'],
+    min: [0, 'Price cannot be negative'],
+    default: 0
+  },
+  originalPrice: {
+    type: Number,
+    min: [0, 'Original price cannot be negative'],
+    default: 0
+  },
+  discount: {
+    type: Number,
+    min: [0, 'Discount cannot be negative'],
+    max: [100, 'Discount cannot exceed 100%'],
+    default: 0
+  },
+  images: [
+    {
+      url: {
+        type: String,
+        required: true
+      },
+      alt: {
+        type: String,
+        default: 'Product image'
+      }
+    }
+  ],
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: true
+  },
+  brand: {
+    type: String,
+    trim: true
+  },
+  sku: {
+    type: String,
+    unique: true,
+    trim: true
+  },
+  stock: {
+    type: Number,
+    required: [true, 'Please provide stock quantity'],
+    min: [0, 'Stock cannot be negative'],
+    default: 0
+  },
+  sold: {
+    type: Number,
+    default: 0
+  },
+  rating: {
+    type: Number,
+    min: [0, 'Rating cannot be negative'],
+    max: [5, 'Rating cannot exceed 5'],
+    default: 0
+  },
+  numReviews: {
+    type: Number,
+    default: 0
+  },
+  reviews: [
+    {
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      name: {
+        type: String,
+        required: true
+      },
+      rating: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 5
+      },
+      comment: {
+        type: String,
+        required: true
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now
+      }
+    }
+  ],
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  isFeatured: {
+    type: Boolean,
+    default: false
+  },
+  tags: [String],
+  specifications: {
+    type: Map,
+    of: String
+  }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Calculate discount percentage
+productSchema.virtual('discountPercentage').get(function() {
+  if (this.originalPrice && this.originalPrice > 0) {
+    return Math.round(((this.originalPrice - this.price) / this.originalPrice) * 100);
+  }
+  return 0;
+});
+
+// Calculate average rating
+productSchema.virtual('averageRating').get(function() {
+  if (this.numReviews > 0) {
+    const totalRating = this.reviews.reduce((sum, review) => sum + review.rating, 0);
+    return (totalRating / this.numReviews).toFixed(1);
+  }
+  return 0;
+});
+
+// Cascade delete reviews when a product is deleted
+productSchema.pre('remove', async function(next) {
+  await this.model('Review').deleteMany({ product: this._id });
+  next();
+});
+
+// Reverse populate with virtuals
+productSchema.virtual('reviews', {
+  ref: 'Review',
+  localField: '_id',
+  foreignField: 'product',
+  justOne: false
+});
+
+productSchema.index({ name: 'text', description: 'text', brand: 'text', tags: 'text' });
+productSchema.index({ category: 1, isActive: 1 });
+productSchema.index({ price: 1 });
+productSchema.index({ rating: -1 });
+productSchema.index({ isFeatured: 1 });
+
+module.exports = mongoose.model('Product', productSchema);
