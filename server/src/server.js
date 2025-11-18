@@ -17,13 +17,18 @@ import errorHandler from "./middleware/errorMiddleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const __envPath = path.resolve(__dirname, "../.env");
-const envResult = dotenv.config({ path: __envPath, override: true });
-if (envResult.error) {
-  console.error('❌ Failed to load .env file:', envResult.error);
-  process.exit(1);
+
+// Only load .env file in development
+if (process.env.NODE_ENV !== 'production') {
+  const __envPath = path.resolve(__dirname, "../.env");
+  const envResult = dotenv.config({ path: __envPath, override: true });
+  if (envResult.error) {
+    console.error('❌ Failed to load .env file:', envResult.error);
+    process.exit(1);
+  }
+  console.log(`✓ Loaded .env from: ${__envPath}`);
 }
-console.log(`✓ Loaded .env from: ${__envPath}`);
+
 console.log(`✓ Cloudinary env check: CLOUD_NAME=${process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'MISSING'}, API_KEY=${process.env.CLOUDINARY_API_KEY ? 'SET' : 'MISSING'}, API_SECRET=${process.env.CLOUDINARY_API_SECRET ? 'SET' : 'MISSING'}`);
 
 const app = express();
