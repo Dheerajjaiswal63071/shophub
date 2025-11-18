@@ -55,6 +55,10 @@ const corsMatchers = corsList.map((item) => {
   return { type: "exact", value: item };
 });
 
+// Log the cors origins and whether wildcard matching is enabled
+console.log(`✓ CORS_ORIGIN configured: ${corsListRaw}`);
+console.log(`✓ CORS matchers: ${corsList.map((s) => s).join(', ')}`);
+
 app.use(
   cors({
     origin: (origin, cb) => {
@@ -67,6 +71,8 @@ app.use(
         return false;
       });
       if (allowed) return cb(null, true);
+      // Log rejected origin to make it easy to debug from Render logs
+      console.warn(`[CORS] Rejected origin: ${origin} — allowed: ${corsListRaw}`);
       return cb(new Error(`Not allowed by CORS: ${origin}`));
     },
     credentials: true,
