@@ -18,6 +18,9 @@ import errorHandler from "./middleware/errorMiddleware.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Log environment mode
+console.log(`🚀 Starting server in ${process.env.NODE_ENV || 'development'} mode`);
+
 // Only load .env file in development
 if (process.env.NODE_ENV !== 'production') {
   const __envPath = path.resolve(__dirname, "../.env");
