@@ -36,15 +36,38 @@ console.log(`✓ Cloudinary env check: CLOUD_NAME=${process.env.CLOUDINARY_CLOUD
 
 const app = express();
 // Support comma-separated origins, default both 3000 (CRA) and 5173 (Vite)
-const corsList = (process.env.CORS_ORIGIN || "http://localhost:3000,http://localhost:5173")
+// We support exact origins and wildcard patterns like "https://*.vercel.app"
+const corsListRaw = process.env.CORS_ORIGIN || "http://localhost:3000,http://localhost:5173";
+const corsList = corsListRaw
   .split(",")
-  .map((s) => s.trim());
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+// Create matchers from the list; support exact match, wildcard (contains *) and a '*' for allow-all
+const corsMatchers = corsList.map((item) => {
+  if (item === "*") return { type: "any" };
+  if (item.includes("*")) {
+    // Escape regex special chars then replace '*' with '.*' to allow wildcard domains
+    const escaped = item.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+    const pat = `^${escaped.replace(/\\\*/g, ".*")}$`;
+    return { type: "regex", regex: new RegExp(pat) };
+  }
+  return { type: "exact", value: item };
+});
+
 app.use(
   cors({
     origin: (origin, cb) => {
-      if (!origin) return cb(null, true); // allow tools and same-origin
-      if (corsList.includes("*") || corsList.includes(origin)) return cb(null, true);
-      return cb(new Error("Not allowed by CORS"));
+      if (!origin) return cb(null, true); // allow tools and same-origin (server-to-server or same-origin requests)
+      // Allow if any matcher accepts it
+      const allowed = corsMatchers.some((m) => {
+        if (m.type === "any") return true;
+        if (m.type === "exact") return m.value === origin;
+        if (m.type === "regex") return m.regex.test(origin);
+        return false;
+      });
+      if (allowed) return cb(null, true);
+      return cb(new Error(`Not allowed by CORS: ${origin}`));
     },
     credentials: true,
   })
